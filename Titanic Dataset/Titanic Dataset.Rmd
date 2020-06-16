@@ -1,0 +1,278 @@
+---
+title: "Predicting the Survival of Titanic Passengers"
+author: "Raghav"
+date: "24/04/2020"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+## Overview
+
+On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This tragedy shocked the international community and lead to better safety regulations for ships. 
+One of the reasons that the shipwreck lead to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class. 
+
+### Objective 
+
+The main objective is to predict the who survived in the sank ship usin machine learning algorithm. 
+
+### Description of the Columns
+
+* Survived - Survival (0 = No; 1 = Yes)
+
+* Pclass - Passenger Class (1 = First Class; 2 = Second Class; 3 = Third Class)
+
+* Name - Name of the Passenger
+
+* Sex - Gender of the Passenger
+
+* Age - Age of Passenger
+
+* Sibsp - Number of Siblings/Spouses Aboard
+
+* Parch - Number of Parents/Children Aboard
+
+* Ticket - Ticket Number
+
+* Fare - Passenger Fare
+
+* Cabin - Cabin
+
+* Embarked - Port of Embarkation (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+
+### Data Preprocessing
+
+Loading the data and checking the structure.
+````{r }
+library(readxl)
+titanic<-read_excel("Z:/Data Science data/Semester 2/Titanic.xls")
+str(titanic)
+````
+
+**Summary:-**
+````{r}
+summary(titanic)
+````
+
+Converting following variables to factor:-
+
+* Survived:- it is in numeric form but we want it in factor form as it is are dependent variables. and also converting 0 to "No" and 1 for "Yes" for simplicity.
+
+* Pclass:- As per the description, we know it should be in categorical type.
+
+* Sex:- As per description, the sex should be categorical but it is stored character type of data .
+
+* Embarked:- It is the port where the passenger aboard ship, so it must be in factor.
+
+````{r}
+titanic$Survived<-ifelse(titanic$Survived==0,"No","Yes")
+titanic$Pclass <- factor(titanic$Pclass,
+                     levels = c(1,2,3),
+                     labels = c("First Class", "Second Class", "Third Class"))
+str(titanic)
+fact<-c("Survived","Pclass","Sex","Embarked")
+titanic[,fact]<-lapply(titanic[,fact], as.factor)
+str(titanic)
+````
+
+**Once again checking the Summary**
+
+````{r}
+summary(titanic)
+```
+
+Checking whether data contains any null values or not
+````{r}
+colSums(is.na(titanic))
+````
+As we can see that Age, Cabin and embarked columns as null values. we can delete cabin as it has more no. of values. For age and embarked we can replace the value with median and mode respectively.Converting the age variable to categorical to make it into groups.
+
+And also deleting Name, PassengerId and ticket as it doesn't have any significance in the survival rate.
+````{r}
+del_col<-c("PassengerId","Name","Cabin","Ticket")
+titanic[,del_col]<-list(NULL)
+titanic1<-titanic
+titanic1$Age[is.na(titanic1$Age)]<-28
+titanic1$Age<-cut(titanic1$Age,breaks = c(0,20,30,40,Inf),labels = c("Teen", "Young","Adult","Old"))
+titanic1$Embarked[is.na(titanic1$Embarked)]<-"S"
+# Scaling numeric data so each numeric data is having equal weightage
+col_sca=c("SibSp","Parch","Fare")
+titanic1[,col_sca]<-lapply(titanic1[,col_sca], scale)
+colSums(is.na(titanic1))
+
+````
+As we can see that there is no null values so we can proceed further for some EDA.
+
+### Exploratory Data Analysis
+
+#### Age Group Wise Distribution
+
+````{r}
+library(ggplot2) 
+ggplot(titanic1,aes(x=Age)) + geom_bar(aes(fill=Survived)) +labs(x = "Age Group",y="Frequency",
+                                                                  title = "Age Wise Distribution")
+````
+
+From Above graph we can see that around 45% of the population were from age group between 20 to 30.
+
+
+
+#### Gender Wise Distribution
+````{r}
+ggplot(titanic1,aes(x = Sex)) + geom_bar(aes(fill = Survived)) +labs(x="Gender",y="Frequency",
+                                                                      title = "Gender wise Distribution")
+````
+
+From above graph, we can observe that Female Survivors are twice in no. to Male survivors.And also we can see that approximately 20% of male are survived out of total male who aboard ship.
+
+#### According to passenger class
+````{r}
+ggplot(titanic1,aes(x=Pclass)) + geom_bar(aes(fill=Survived)) +labs(x="Passenger Class",y = "Frequency",
+                                                            title = "Passenger Class wise Distribution")
+````
+
+From Graph, we can observe that First Class survived compared to other passenger class and also we can see that more no. of non survivor are from third class passenger.
+
+
+
+### Spliting Data for ML Algorithm
+
+````{r}
+library(caret)
+set.seed(100) # keeping spliting constant in every iteration
+index<-createDataPartition(titanic1$Survived,p=0.7,list = F)
+train_data<-titanic1[index,]
+test_data<-titanic1[-index,]
+dim(train_data) # dimension of training data 
+dim(test_data) # dimension of testing data
+````
+
+## Applying Machine Algoritm
+
+### Logistic Regression
+````{r}
+model_lr<-glm(Survived~.,data = train_data,family = "binomial")
+summary(model_lr)
+````
+
+As we can see that Parch, fare and Embarked are insignificant.We can say that there is less or no relation of survival of person with place he/she aboard.
+
+Therefore, deleting the insignificant variables. and building the model.
+````{r}
+del_col1<-c("Fare","Embarked","Parch")
+titanic1[,del_col1]<-list(NULL)
+# Again spliting the train test or deleting the those columns
+set.seed(100) # keeping spliting constant
+index<-createDataPartition(titanic1$Survived,p=0.7,list = F)
+train_data<-titanic1[index,]
+test_data<-titanic1[-index,]
+
+model_lr<-glm(Survived~.,data = train_data,family = "binomial")
+summary(model_lr)
+````
+
+As we can see all the variables are significant, so we can proceed for accuracy of the model.
+
+````{r}
+# Predicting the value in training data to consider cutoff for testing data.
+pred_tr_lr<-fitted(model_lr)
+# considering the cutoff with help of ROCR curve
+library(ROCR)
+pred<-prediction(pred_tr_lr,train_data$Survived)
+perf<-performance(pred,"tpr","fpr")
+plot(perf,colorize=T,print.cutoffs.at=seq(0.1,by=0.05))
+
+````
+
+As we can see that 0.35 and 0.4 has the value of sensitivity and specificity closer,so lets check for both with help of confusion matrix.
+
+* **For 0.35**
+````{r}
+pred_tr_lr1<-ifelse(pred_tr_lr<0.35,"No","Yes")
+pred_tr_lr1<-as.factor(pred_tr_lr1)
+confusionMatrix(pred_tr_lr1,train_data$Survived)
+````
+
+* **For 0.4**
+````{r}
+pred_tr_lr2<-ifelse(pred_tr_lr<0.4,"No","Yes")
+pred_tr_lr2<-as.factor(pred_tr_lr2)
+confusionMatrix(pred_tr_lr2,train_data$Survived)
+````
+
+As we know that we have to consider the cutoff which has sensitivity and specificity close to each other. Therefore, we consider 0.4 as the cutoff and predicting the value of test.
+
+
+````{r}
+pred_lr<-predict(model_lr,test_data,type="response")
+pred_lr1<-ifelse(pred_lr<0.4,"No","Yes")
+pred_lr1<-as.factor(pred_lr1)
+confusionMatrix(pred_lr1,test_data$Survived)
+````
+
+Logistic Regression algorithm gives accuracy of **0.7895** or **78.95%**
+
+
+
+### Decision Tree
+
+Creating a model and ploting decision tree
+````{r}
+library(rpart)
+library(rpart.plot)
+model_tr<-rpart(Survived~.,data = train_data)
+rpart.plot(model_tr)
+````
+
+Checking the Accuracy of model
+````{r}
+pred_tr<-predict(model_tr,test_data,type="class")
+confusionMatrix(pred_tr,test_data$Survived)
+````
+
+Decision Tree algorithm gives accuracy of **0.8271** or **82.71%**
+
+
+### Random forest
+
+Repeating the same step of creating the model, and predict the value on test data.
+```{r}
+library(randomForest)
+model_rf<-randomForest(Survived~.,data = train_data)
+model_rf
+plot(model_rf)
+pred_rf<-predict(model_rf,test_data)
+confusionMatrix(pred_rf,test_data$Survived)
+````
+
+Random Forest algorithm gives accuracy of **0.8158** or **81.58%**
+
+### Support Vector Machine Algorithm
+
+Repeating the same step of building model and predicting the value on test data.
+````{r}
+library(e1071)
+model_svm<-svm(Survived~.,data = train_data)
+pred_svm<-predict(model_svm,test_data)
+confusionMatrix(pred_svm,test_data$Survived)
+````
+
+Support Vector Machine algorithm gives accuracy of **0.8158** or **81.58%**
+
+### Naive Bayes Algorithm
+
+Repeating the same step of building model and predicting the value on test data.
+````{r}
+model_nb<-naiveBayes(Survived~.,data = train_data)
+pred_nb<-predict(model_nb,test_data)
+confusionMatrix(pred_nb,test_data$Survived)
+````
+
+
+Naive Bayes algorithm gives accuracy of **0.8233** or **82.33%**
+
+## Conclusion
+
+After performing various classification techniques and taking into account their accuracies, we can conclude all the models had an accuracy ranging from **78% to 83%**. Out of which **Naive Bayes Algorithm** gave a slightly better accuracy of **82.33%**.
