@@ -1,4 +1,4 @@
-# Titanic Dataset
+## Titanic Dataset
 
 The Dataset consist of 891 Observations from which 342 survived and 549 non-survived. Our objective was to predict that the given person is survived or not with help of building ML model.
 
